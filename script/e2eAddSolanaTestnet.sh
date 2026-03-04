@@ -161,6 +161,7 @@ SOLANA_NETWORK=${SOLANA_NETWORK:-"devnet"}
 EVM_NETWORK=${EVM_NETWORK:-"sepolia"}
 REMOTE_CHAIN_NAME=${REMOTE_CHAIN_NAME:-"ethereum-sepolia"}
 TOKEN_DECIMALS=${TOKEN_DECIMALS:-9}
+EVM_TOKEN_DECIMALS=${EVM_TOKEN_DECIMALS:-18}
 TOKEN_NAME=${TOKEN_NAME:-"Falcon USD"}
 TOKEN_SYMBOL=${TOKEN_SYMBOL:-"USDf"}
 EVM_HARDHAT_DIR=${EVM_HARDHAT_DIR:-""}
@@ -181,7 +182,8 @@ echo "  EVM Token:            $EVM_TOKEN_ADDRESS"
 echo "  EVM Pool:             $EVM_POOL_ADDRESS"
 echo "  CCIP Pool Program:    $CCIP_POOL_PROGRAM"
 echo "  Solana Wallet:        $SOL_WALLET"
-echo "  Token:                $TOKEN_NAME ($TOKEN_SYMBOL) / $TOKEN_DECIMALS decimals"
+echo "  Token:                $TOKEN_NAME ($TOKEN_SYMBOL) / $TOKEN_DECIMALS decimals (Solana)"
+echo "  EVM Token Decimals:   $EVM_TOKEN_DECIMALS (remote chain config)"
 echo ""
 echo "📡 Mode: BROADCAST (testnet, no multisig)"
 echo ""
@@ -398,7 +400,7 @@ This will:
             --burn-mint-pool-program "$CCIP_POOL_PROGRAM" \
             --remote-chain "$REMOTE_CHAIN_NAME" \
             --token-address "$EVM_TOKEN_ADDRESS" \
-            --decimals "$TOKEN_DECIMALS" 2>&1) || true
+            --decimals "$EVM_TOKEN_DECIMALS" 2>&1) || true
 
         echo "$OUTPUT" | tail -10
         print_success "Remote chain config initialized"
@@ -414,7 +416,7 @@ This will:
             --remote-chain "$REMOTE_CHAIN_NAME" \
             --pool-addresses "$EVM_POOL_ADDRESS" \
             --token-address "$EVM_TOKEN_ADDRESS" \
-            --decimals "$TOKEN_DECIMALS" 2>&1) || {
+            --decimals "$EVM_TOKEN_DECIMALS" 2>&1) || {
             print_error "Failed to edit chain remote config"
             echo "$OUTPUT"
             exit 1
