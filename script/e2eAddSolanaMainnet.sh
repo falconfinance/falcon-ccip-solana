@@ -624,44 +624,18 @@ fi
 if [ $START_STEP -le 5 ]; then
     ask_confirmation "STEP 5: Multisig Ownership Transfer [🔐 REQUIRED]
 This will:
-- Transfer mint authority to Squads Protocol multisig
 - Transfer pool ownership to Squads Protocol multisig
 - Accept pool ownership (by multisig)
+- Transfer SPL token freeze authority to Squads Protocol multisig
+
+Note: Mint authority stays with Pool Signer PDA (managed by Chainlink's BurnMint Pool Program).
+      Our multisig only needs CCIP admin role (pool ownership) and freeze authority.
 
 🔐 Squads Address: $SQUADS_MULTISIG_ADDRESS
 ⚠️  These operations are IRREVERSIBLE on mainnet."
 
-    # 5a. Transfer mint authority to multisig
-    if ask_substep_confirmation "5a. Transfer mint authority to Squads multisig [🔐]
-  Current: Pool Signer PDA ($SOL_POOL_SIGNER_PDA)
-  Target:  Squads ($SQUADS_MULTISIG_ADDRESS)"; then
-
-        if ! ask_critical_confirmation "Transfer mint authority to Squads multisig: $SQUADS_MULTISIG_ADDRESS
-
-  Token:   $SOL_TOKEN_MINT
-  Program: $CCIP_POOL_PROGRAM
-
-  The multisig MUST include the Pool Signer PDA as a signer."; then
-            exit 0
-        fi
-
-        echo "Transferring mint authority to multisig..."
-
-        OUTPUT=$(yarn svm:pool:transfer-mint-authority-to-multisig \
-            --token-mint "$SOL_TOKEN_MINT" \
-            --burn-mint-pool-program "$CCIP_POOL_PROGRAM" \
-            --new-multisig-mint-authority "$SQUADS_MULTISIG_ADDRESS" 2>&1) || {
-            print_error "Failed to transfer mint authority to multisig"
-            echo "$OUTPUT"
-            exit 1
-        }
-
-        echo "$OUTPUT" | tail -10
-        print_success "Mint authority transferred to multisig"
-    fi
-
-    # 5b. Transfer pool ownership
-    if ask_substep_confirmation "5b. Transfer pool ownership to Squads multisig [🔐]
+    # 5a. Transfer pool ownership
+    if ask_substep_confirmation "5a. Transfer pool ownership to Squads multisig [🔐]
   Target: $SQUADS_MULTISIG_ADDRESS"; then
 
         if ! ask_critical_confirmation "Transfer pool ownership to: $SQUADS_MULTISIG_ADDRESS"; then
@@ -681,11 +655,11 @@ This will:
 
         echo "$OUTPUT" | tail -10
         print_success "Pool ownership transfer proposed"
-        print_warning "Squads multisig must now accept (step 5c)"
+        print_warning "Squads multisig must now accept (step 5b)"
     fi
 
-    # 5c. Accept ownership
-    if ask_substep_confirmation "5c. Accept pool ownership (run by Squads multisig)
+    # 5b. Accept ownership
+    if ask_substep_confirmation "5b. Accept pool ownership (run by Squads multisig)
   ⚠️  This must be executed from the multisig wallet."; then
 
         echo "Accepting pool ownership..."
@@ -701,6 +675,28 @@ This will:
         print_success "Pool ownership accepted"
     fi
 
+    # 5c. Transfer freeze authority to multisig
+    if ask_substep_confirmation "5c. Transfer SPL token freeze authority to Squads multisig [🔐]
+  Token:   $SOL_TOKEN_MINT
+  Target:  Squads ($SQUADS_MULTISIG_ADDRESS)"; then
+
+        if ! ask_critical_confirmation "Transfer freeze authority to Squads multisig: $SQUADS_MULTISIG_ADDRESS
+
+  Token: $SOL_TOKEN_MINT
+  ⚠️  This is IRREVERSIBLE."; then
+            exit 0
+        fi
+
+        echo "Transferring freeze authority to multisig..."
+
+        spl-token authorize "$SOL_TOKEN_MINT" freeze "$SQUADS_MULTISIG_ADDRESS" || {
+            print_error "Failed to transfer freeze authority"
+            exit 1
+        }
+
+        print_success "Freeze authority transferred to multisig"
+    fi
+
     # 5d. Verify
     if ask_substep_confirmation "5d. Verify multisig configuration"; then
         echo "Checking pool info..."
@@ -710,7 +706,7 @@ This will:
         echo "$OUTPUT" | tail -15
 
         echo ""
-        echo "Checking token mint authority..."
+        echo "Checking token authorities (mint & freeze)..."
         spl-token display "$SOL_TOKEN_MINT" 2>&1 || true
     fi
 
@@ -741,8 +737,9 @@ echo "  └───────────────────────
 echo ""
 echo "🔐 Security:"
 echo "  ✅ Squads Multisig: $SQUADS_MULTISIG_ADDRESS"
-echo "  ✅ Mint Authority:  Multisig (via Pool Signer PDA)"
-echo "  ✅ Pool Ownership:  Multisig"
+echo "  ✅ Mint Authority:  Pool Signer PDA (managed by Chainlink BurnMint Pool Program)"
+echo "  ✅ Pool Ownership:  Squads Multisig"
+echo "  ✅ Freeze Authority: Squads Multisig"
 echo ""
 echo "🔐 EVM MULTISIG operations:"
 echo "  - ApplyChainUpdates (3c) → Gnosis Safe"
